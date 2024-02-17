@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+package project;
+
+message Aluno {
+  string matricula = 1;
+  string nome      = 2;
+}
+
+message Professor {
+  string siape = 1;
+  string nome  = 2;
+}
+
+message Disciplina {
+  string sigla = 1;
+  string nome  = 2;
+}
+
+message RelatorioDisciplina {
+  Disciplina disciplina          = 1;
+  Professor professor            = 2;
+  repeated Aluno alunos          = 3;
+}
+
+message ResumoDisciplina {
+  Disciplina disciplina          = 1;
+  Professor professor            = 2;
+  int32 totalAlunos              = 3;
+}
+
+message Status {
+  // 0 = sucesso, 1 = erro
+  int32 status = 1; 
+  // detalhes do erro para status = 1
+  string msg   = 2;
+}
+
+message Identificador {
+  // matricula, siape ou sigla
+  string id = 1;
+}
+
+message DisciplinaPessoa {
+  // id da disciplina
+  string disciplina = 1;
+  // matricula do aluno ou siape do professor
+  string idPessoa = 2;
+}
+
+service PortalMatricula {
+  rpc AdicionaProfessor(DisciplinaPessoa) returns (Status) {}
+  rpc RemoveProfessor(DisciplinaPessoa) returns (Status) {}
+  rpc AdicionaAluno(DisciplinaPessoa) returns (Status) {}
+  rpc RemoveAluno(DisciplinaPessoa) returns (Status) {}
+  rpc DetalhaDisciplina(Identificador) returns (RelatorioDisciplina) {}
+  rpc ObtemDisciplinasProfessor(Identificador) returns (stream RelatorioDisciplina) {}
+  rpc ObtemDisciplinasAluno(Identificador) returns (stream ResumoDisciplina) {}
+}
