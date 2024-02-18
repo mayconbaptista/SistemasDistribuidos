@@ -2,8 +2,8 @@ from concurrent import futures
 import logging
 
 import grpc
-
-import portalADM_pb2
+# arquivo gerado apartir do portalADM.proto 
+import portalADM_pb2 
 import portalADM_pb2_grpc
 
 from data import * # dados auxiliares
@@ -23,6 +23,9 @@ class PortalAdministrativo (portalADM_pb2_grpc.PortalAdministrativoServicer):
             if(request.matricula and len(request.nome)):
                 if(len(request.matricula) < 4 or len(request.nome) < 4):
                     return portalADM_pb2.Status(status=1, msg=f"Os campos matricula e nome devem ter mais de 4 caracteres!")
+                
+                if(dados.get(request.matricula)):
+                    return portalADM_pb2.Status(status=1, msg=f"A matricula{request.matricula} Já existe!")
                 
                 dados[request.matricula] = Aluno(matricula=request.matricula,nome=request.nome) # quardando os dados dos alunos
                 imprime()
@@ -52,11 +55,14 @@ class PortalAdministrativo (portalADM_pb2_grpc.PortalAdministrativoServicer):
     def RemoveAluno(self, request, context): # ok
 
         try:
+            if(not dados.get(request.id)):
+                return portalADM_pb2.Status(staus=1, msg=f"Amatricula {request.id} Não existe!")
+            
             dados.pop(request.id)
             imprime()
             return portalADM_pb2.Status(status=0, msg=f"Aluno {request.id} removido com sucesso!")
         except Exception as e:
-            return portalADM_pb2.Status(status=0, msg=f"Error: {str(e)}")
+            return portalADM_pb2.Status(status=0, msg=f"Error: {str(e)} ao remove o aluno")
         
     def ObtemAluno(self, request, context):
 
@@ -70,7 +76,8 @@ class PortalAdministrativo (portalADM_pb2_grpc.PortalAdministrativoServicer):
             return portalADM_pb2.Aluno(matricula="", nome="")
 
     def ObtemTodosAlunos(self, request, context):
-        return super().ObtemTodosAlunos(request, context)
+        for aluno in dados.values():
+            yield portalADM_pb2.Aluno(matricula=aluno.matricula, nome=aluno.nome)
 
 
 
