@@ -35,3 +35,23 @@ Os tópicos de publicação no broker sequem a arquitetura rest, o servidor admi
 * portal/admin/disciplina/delete
 
 Pode se acompanhar todas as publucações no broker com o sequinte comando: mosquitto_sub -t portal/# -v
+
+Para testar a comunicação podem ser publicados nos tópicos manualmente usando o mosquitto ex:
+
+* mosquitto_pub -t portal/aluno -m "teste connect"
+* mosquitto_pub -t portal/admin/aluno/create -m "11921BSI209,maycon"
+* mosquitto_pub -t portal/admin/aluno/update -m "11921BSI209,maycon edit"
+* mosquitto_pub -t portal/admin/aluno/update -m "11921BSI201,errornot found edit"
+* mosquitto_pub -t portal/admin/aluno/delete -m "11921BSI201"
+* mosquitto_pub -t portal/admin//delete -m "11921BSI209"
+* mosquitto_pub -t portal/admin/professor/create -m "1524,pedro"
+* mosquitto_pub -t portal/admin/professor/create -m "1525,Miane"
+* mosquitto_pub -t portal/admin/professor/update -m "1525,Miane edit"
+* mosquitto_pub -t portal/admin/professor/delete -m "1525"
+* mosquitto_pub -t portal/admin/disciplina/create -m "BSI034,prolog,30"
+* mosquitto_pub -t portal/admin/disciplina/update -m "BSI035,prolog,30"
+* mosquitto_pub -t portal/admin/disciplina/update -m "BSI034,prolog edit,29"
+* mosquitto_pub -t portal/admin/disciplina/delete -m "BSI035"
+* mosquitto_pub -t portal/admin/disciplina/delete -m "BSI034"
+
+O serverADM irá sincronizar seu banco de dados com base nas atualizações publicadas.
