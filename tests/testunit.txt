@@ -1,0 +1,6 @@
+--op create --base aluno --key 11921BSI209 --val  maycon
+--op create --base aluno --key 11921BSI240 --val  Sávio
+--op getall --base aluno
+--op create --base professor --key 1212 --val Miane
+--op create --base aluno --key 11921240 --val Sávio
+--op getall --base professor
