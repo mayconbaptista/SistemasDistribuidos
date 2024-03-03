@@ -34,4 +34,4 @@ Os tópicos de publicação no broker sequem a arquitetura rest, o servidor admi
 * portal/admin/disciplina/update
 * portal/admin/disciplina/delete
 
-Pode se acompanhar todas as publucações no broker com o sequinte comando: mosquitto_sub -t portal/#
+Pode se acompanhar todas as publucações no broker com o sequinte comando: mosquitto_sub -t portal/# -v
