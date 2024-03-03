@@ -2,5 +2,23 @@
 --op create --base aluno --key 11921BSI240 --val  Sávio
 --op getall --base aluno
 --op create --base professor --key 1212 --val Miane
---op create --base aluno --key 11921240 --val Sávio
+--op create --base aluno --key 11921BSI240 --val Sávio --test Conflict
 --op getall --base professor
+
+
+--op create --base aluno --key 11921BSI209 --val maycon
+--op create --base aluno --key 11921BSI201 --val Pedro
+--op update --base aluno --key 11921BSI201 --val Pedro edit
+--op remove --base aluno --key 11921BSI201
+--op delete --base aluno --key 11921BSI201
+--op create --base aluno --key 11921BSI201 --val Pedro
+--op delete --base aluno --key 11921BSI201
+--op delete --base aluno --key 11921BSI209
+--op create --base aluno --key 11921BSI209 --val Maycon
+--op get --base aluno --key 11921BSI209
+--op get --base aluno --key 11921BSI205
+--op delete --base aluno --key 119
+--op get --base aluno --key 119
+--op create --base professor --key 2020 --val Alex
+--op create --base professor --key 1214 --val lud
+--op update --base professor --key 2020 --val Alex edit
