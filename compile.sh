@@ -16,4 +16,4 @@ python3 -m pip install -r requirements.txt
 python3 -m grpc_tools.protoc -I./proto --python_out=. --grpc_python_out=. ./proto/portalADM.proto
 
 # já _pb2_grpc.py que contém nossas classes de cliente e servidor geradas.
-python3 -m grpc_tools.protoc -I./proto --python_out=. --grpc_python_out=. ./proto/portalMat.proto 
+python3 -m grpc_tools.protoc -I./proto --python_out=. --grpc_python_out=. ./proto/portalMat.proto

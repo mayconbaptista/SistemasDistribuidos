@@ -163,3 +163,5 @@ cython_debug/
 *_pb2_grpc.py
 *_pb2.py
 /tests/*.py
+.vscode/
+*2.py

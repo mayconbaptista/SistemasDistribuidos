@@ -14,7 +14,7 @@ from data import *
 
 # Configurações do servidor
 HOST = '127.0.0.1'
-# PORT = 12345
+PORT= int(input("Host: "))
 
 # Configurações do broker MQTT
 MQTT_BROKER_HOST = '127.0.0.1' # 'mqtt.eclipseprojects.io'
@@ -33,13 +33,21 @@ def MQTT_sincronize_aluno (event, request):
 
     try:
         if(str(event).endswith("create")):
-            if(not dados_alunos.get(request[0])):
-                dados_alunos[request[0]] = Aluno(matricula=request[0], nome=request[1])
+
+            if(not dados_alunos.get(request.get("matricula"))):
+
+                dados_alunos[request.get("matricula")] = json.dumps(request) 
+
         elif(str(event).endswith("update")):
-            if(dados_alunos.get(request[0])):
-                dados_alunos[request[0]] = Aluno(matricula=request[0], nome=request[1])
+
+            if(dados_alunos.get(request.get("matricula"))):
+
+                dados_alunos[request.get("matricula")] = json.dumps(request)
+
         elif(str(event).endswith("delete")):
-            dados_alunos.pop(request[0])
+
+            dados_alunos.pop(request.get("matricula"))
+
     except Exception as e:
         print(f"Sincronize Error: {str(e)}")
         
@@ -47,13 +55,21 @@ def MQTT_sincronize_aluno (event, request):
 def MQTT_sincronize_professor (event, request):
     try:
         if(str(event).endswith("create")):
-            if(not dados_professores.get(request[0])):
-                dados_professores[request[0]] = Professor(siape=request[0], nome=request[1])
+
+            if(not dados_professores.get(request.get("siape"))):
+
+                dados_professores[request.get("siape")] = json.dumps(request)
+
         elif(str(event).endswith("update")):
-            if(dados_professores.get(request[0])):
-                dados_professores[request[0]] = Professor(siape=request[0], nome=request[1])
+
+            if(dados_professores.get(request.get("siape"))):
+
+                dados_professores[request.get("siape")] = json.dumps(request)
+
         elif(str(event).endswith("delete")):
-            dados_professores.pop(request[0])
+
+            dados_professores.pop(request.get("siape"))
+
     except Exception as e:
         print(f"Sincronize Error: {str(e)}")
         
@@ -61,13 +77,19 @@ def MQTT_sincronize_professor (event, request):
 def MQTT_sincronize_disciplina (event, request):
     try:
         if(str(event).endswith("create")):
-            if(not dados_disciplinas.get(request[0])):
-                dados_disciplinas[request[0]] = Disciplina(sigla=request[0], nome=request[1], vagas=int(request[2]))
+
+            if(not dados_disciplinas.get(request.get("sigla"))):
+
+                dados_disciplinas[request.get("sigla")] = json.dumps(request)
+
         elif(str(event).endswith("update")):
-            if(dados_disciplinas.get(request[0])):
-                dados_disciplinas[request[0]] = Disciplina(sigla=request[0], nome=request[1], vagas=int(request[2]))
+
+            if(dados_disciplinas.get(request.get("sigla"))):
+
+                dados_disciplinas[request.get("sigla")] = json.dumps(request)
+
         elif(str(event).endswith("delete")):
-            dados_disciplinas.pop(request[0])
+            dados_disciplinas.pop(request.get("sigla"))
     except Exception as e:
         print(f"Sincronize Error: {str(e)}")
 
@@ -90,7 +112,7 @@ def on_message(client, userdata, msg):
 
     print(f"Mensagem recebida do tópico -> {msg.topic}: {msg.payload.decode()}")
 
-    payload = str(msg.payload.decode()).split(',')
+    payload = json.loads(msg.payload.decode())
 
     if(str(msg.topic).find("aluno") > -1):
         MQTT_sincronize_aluno(msg.topic, payload)
@@ -106,15 +128,36 @@ mqtt_client.on_message = on_message
 
 ######################################### Classes com as funções chamadas via RPC #####################################
 
+def valida(request):
+
+    if type(request) == type(portalADM_pb2.Aluno()):
+
+        if(len(request.matricula) <= 4 or len(request.nome) <= 4):
+            raise ValueError("Os campos matricula e nome devem mais de 4 caractares")
+        
+    elif type(request) == type(portalADM_pb2.Professor()):
+        if(len(request.siape) <= 4 or len(request.nome) <= 4):
+            raise ValueError("Os campos siape e nome devem ter mais de 4 caracteres")
+        
+    elif type(request) == type(portalADM_pb2.Disciplina()):
+        if(len(request.sigla) <= 4 or len(request.nome) <= 4 or request.vagas <= 0):
+            raise ValueError("Os campos sigla e nome devem ter mais de 4 caracteres e numero de vagas não pode iniciar com 0")
+
 # classe portalAdministrativo que conterá as funções clamadas via RPC
 class PortalAdministrativo (portalADM_pb2_grpc.PortalAdministrativoServicer):
 
     # Método para manipular a solicitação GetUsers
     def NovoAluno(self, request, context): #ok
         try:
-            if(not dados_alunos.get(request.matricula)):               
-                dados_alunos[request.matricula] = Aluno(matricula=request.matricula,nome=request.nome) 
-                mqtt_client.publish(MQTT_TOPIC_BASE + "aluno/create", f"{request.matricula},{request.nome}", 0 )
+            if(not dados_alunos.get(request.matricula)):
+
+                valida(request)              
+
+                dados_json = json.dumps({"matricula":request.matricula, "nome":request.nome})
+
+                dados_alunos[request.matricula] = dados_json
+
+                mqtt_client.publish(MQTT_TOPIC_BASE + "aluno/create", dados_json, 0)
                 return portalADM_pb2.Status(status=STATUS_OK, msg=f"Created")
             else:
                 return portalADM_pb2.Status(status=STATUS_ERROR, msg=f"Conflict key:{request.matricula}")
@@ -126,8 +169,13 @@ class PortalAdministrativo (portalADM_pb2_grpc.PortalAdministrativoServicer):
         try:
             if(dados_alunos.get(request.matricula)):
 
-                dados_alunos[request.matricula] = Aluno(matricula=request.matricula, nome=request.nome)
-                mqtt_client.publish( MQTT_TOPIC_BASE + "aluno/update", f"{request.matricula},{request.nome}", 0 )
+                valida(request)
+
+                dados_json = json.dumps({"matricula":request.matricula, "nome":request.nome})
+
+                dados_alunos[request.matricula] = dados_json
+
+                mqtt_client.publish( MQTT_TOPIC_BASE + "aluno/update", dados_json, 0 )
                 return portalADM_pb2.Status(status=STATUS_OK, msg=f"Ok")
             else:
                 return portalADM_pb2.Status(status=STATUS_ERROR, msg=f"Not_found key:{request.matricula}")
@@ -139,7 +187,7 @@ class PortalAdministrativo (portalADM_pb2_grpc.PortalAdministrativoServicer):
 
         try:
             dados_alunos.pop(request.id)
-            mqtt_client.publish( MQTT_TOPIC_BASE + "aluno/delete", f"{request.id}", 0 )
+            mqtt_client.publish( MQTT_TOPIC_BASE + "aluno/delete",json.dumps({"matricula":request.id}), 0)
             return portalADM_pb2.Status(status=STATUS_OK, msg="Ok")
         except Exception as e:
             return portalADM_pb2.Status(status=STATUS_ERROR, msg=f"Not_found: {str(e)}")
@@ -148,16 +196,22 @@ class PortalAdministrativo (portalADM_pb2_grpc.PortalAdministrativoServicer):
 
         try:
             if(dados_alunos.get(request.id)):
-                aluno = dados_alunos.get(request.id)
-                return portalADM_pb2.Aluno(matricula=aluno.matricula, nome=aluno.nome)
+                
+                aluno = json.loads(dados_alunos.get(request.id))
+
+                return portalADM_pb2.Aluno(matricula=aluno.get("matricula"), nome=aluno.get("nome"))
             else:
                 return portalADM_pb2.Aluno(matricula="", nome="")
         except Exception as e:
             return portalADM_pb2.Aluno(matricula="", nome="")
 
     def ObtemTodosAlunos(self, request, context):
-        for aluno in dados_alunos.values():
-            yield portalADM_pb2.Aluno(matricula=aluno.matricula, nome=aluno.nome)
+
+        for json_aluno in dados_alunos.values():
+
+            aluno = json.loads(json_aluno)
+
+            yield portalADM_pb2.Aluno(matricula=aluno.get("matricula"), nome=aluno.get("nome"))
 
     ################################################### professor ####################################################
 
@@ -165,8 +219,14 @@ class PortalAdministrativo (portalADM_pb2_grpc.PortalAdministrativoServicer):
         
         try:
             if(not dados_professores.get(request.siape)): #ok
-                dados_professores[request.siape] = Professor(siape=request.siape, nome=request.nome)
-                mqtt_client.publish( MQTT_TOPIC_BASE + "professor/create", f"{request.siape},{request.nome}", 0 )
+
+                valida(request)
+
+                professor_json = json.dumps({"siape":request.siape, "nome":request.nome})
+
+                dados_professores[request.siape] = professor_json
+
+                mqtt_client.publish( MQTT_TOPIC_BASE + "professor/create", professor_json, 0 )
                 return portalADM_pb2.Status(status=STATUS_OK, msg="Created")
             else:
                 return portalADM_pb2.Status(status=STATUS_ERROR, msg=f"Conflict key:{request.siape}")
@@ -176,8 +236,15 @@ class PortalAdministrativo (portalADM_pb2_grpc.PortalAdministrativoServicer):
     def EditaProfessor(self, request, context):
         try:
             if(dados_professores.get(request.siape)):
-                dados_professores[request.siape] = Professor(siape=request.siape, nome=request.nome)
-                mqtt_client.publish( MQTT_TOPIC_BASE + "professor/update", f"{request.siape},{request.nome}", 0 )
+
+                valida(request)
+
+                professor_json = json.dumps({"siape":request.siape, "nome":request.nome})
+
+                dados_professores[request.siape] = professor_json
+
+                mqtt_client.publish( MQTT_TOPIC_BASE + "professor/update", professor_json, 0)
+
                 return portalADM_pb2.Status(status=STATUS_OK, msg="Ok")
             else:
                 return portalADM_pb2.Status(status=STATUS_ERROR, msg=f"Not_found: key:{request.siape}")
@@ -187,18 +254,21 @@ class PortalAdministrativo (portalADM_pb2_grpc.PortalAdministrativoServicer):
     def RemoveProfessor(self, request, context):
         try:
             dados_professores.pop(request.id)
-            mqtt_client.publish( MQTT_TOPIC_BASE + "professor/delete", f"{request.id}", 0 )
-            return portalADM_pb2.Staus(status=STATUS_OK, msg="ok")
+            mqtt_client.publish( MQTT_TOPIC_BASE + "professor/delete",json.dumps({"siape":request.id}), 0 )
+            return portalADM_pb2.Status(status=STATUS_OK, msg="Ok")
         
         except KeyError as e:
-            return portalADM_pb2.Status(status=STATUS_ERROR, msg=f"Not_found key:{id}")
+            return portalADM_pb2.Status(status=STATUS_ERROR, msg=f"Not_found key:{request.id}")
         
     def ObtemProfessor(self, request, context):
         
         try:
             if(dados_professores.get(request.id)):
-                professor = dados_professores.get(request.id)
-                return portalADM_pb2.Professor(siape=professor.siape, nome=professor.nome)
+
+                professor_json = dados_professores.get(request.id)
+
+                professor = json.loads(professor_json)
+                return portalADM_pb2.Professor(siape=professor.get("siape"), nome=professor.get("nome"))
 
             else:
                 return portalADM_pb2.Professor(siape=" ", nome=" ")
@@ -207,8 +277,11 @@ class PortalAdministrativo (portalADM_pb2_grpc.PortalAdministrativoServicer):
         
     def ObtemTodosProfessores(self, request, context):
         
-        for professor in dados_professores.values():
-            yield portalADM_pb2.Professor(siape=professor.siape, nome=professor.nome)
+        for professor_json in dados_professores.values():
+
+            professor = json.loads(professor_json)
+
+            yield portalADM_pb2.Professor(siape=professor.get("siape"), nome=professor.get("nome"))
 
     ###################################################### disciplina #################################################
 
@@ -216,8 +289,14 @@ class PortalAdministrativo (portalADM_pb2_grpc.PortalAdministrativoServicer):
 
         try:
             if(not dados_disciplinas.get(request.sigla)):
-                dados_disciplinas[request.sigla] = Disciplina(sigla=request.sigla, nome=request.nome, vagas=request.vagas)
-                mqtt_client.publish( MQTT_TOPIC_BASE + "disciplina/create", f"{request.sigla},{request.nome},{request.vagas}", 0 )
+
+                valida(request)
+
+                disciplina_json = json.dumps({"sigla":request.sigla, "nome":request.nome, "vagas":request.vagas})
+
+                dados_disciplinas[request.sigla] = disciplina_json
+
+                mqtt_client.publish( MQTT_TOPIC_BASE + "disciplina/create", disciplina_json, 0 )
                 return portalADM_pb2.Status(status=STATUS_OK, msg="Created")
             else:
                 return portalADM_pb2.Status(status=STATUS_ERROR, msg=f"Conflict key:{request.sigla}")
@@ -228,9 +307,14 @@ class PortalAdministrativo (portalADM_pb2_grpc.PortalAdministrativoServicer):
     def EditaDisciplina(self, request, context):
         try:
             if(dados_disciplinas.get(request.sigla)):
+
+                valida(request)
+
+                disciplina_json = json.dumps({"sigla":request.sigla, "nome":request.nome, "vagas":request.vagas})
+
+                dados_disciplinas[request.sigla] = disciplina_json
             
-                dados_disciplinas[request.sigla] = Disciplina(sigla=request.sigla, nome=request.nome, vagas=request.vagas)
-                mqtt_client.publish( MQTT_TOPIC_BASE + "disciplina/update", f"{request.sigla},{request.nome},{request.vagas}", 0 )
+                mqtt_client.publish( MQTT_TOPIC_BASE + "disciplina/update", disciplina_json, 0)
                 return portalADM_pb2.Status(status=STATUS_OK, msg="Ok")
             else:
                 return portalADM_pb2.Status(status=STATUS_ERROR, msg=f"Not_found: key:{request.sigla}")
@@ -241,7 +325,7 @@ class PortalAdministrativo (portalADM_pb2_grpc.PortalAdministrativoServicer):
         
         try:
             dados_disciplinas.pop(request.id)
-            mqtt_client.publish( MQTT_TOPIC_BASE + "disciplina/delete", f"{request.id}", 0 )
+            mqtt_client.publish( MQTT_TOPIC_BASE + "disciplina/delete", json.dumps({"sigla":request.id}), 0)
             return portalADM_pb2.Status(status=STATUS_OK, msg="ok")
         
         except KeyError as e:
@@ -251,8 +335,11 @@ class PortalAdministrativo (portalADM_pb2_grpc.PortalAdministrativoServicer):
         try:
             if(dados_disciplinas.get(request.id)):
 
-                disciplina = dados_disciplinas.get(request.id)
-                return portalADM_pb2.Disciplina(sigla=disciplina.sigla, nome=disciplina.nome, vagas=disciplina.vagas)
+                disciplina_json = dados_disciplinas.get(request.id)
+
+                disciplina = json.loads(disciplina_json)
+
+                return portalADM_pb2.Disciplina(sigla=disciplina.get("sigla"), nome=disciplina.get("nome"), vagas=disciplina.get("vagas"))
 
             else:
                 return portalADM_pb2.Disciplina(sigla=" ", nome=" ", vagas=0)
@@ -261,8 +348,11 @@ class PortalAdministrativo (portalADM_pb2_grpc.PortalAdministrativoServicer):
         
     def ObtemTodasDisciplinas(self, request, context):
         
-        for disciplina in dados_disciplinas.values():
-            yield portalADM_pb2.Disciplina(sigla=disciplina.sigla, nome=disciplina.nome, vagas=disciplina.vagas)
+        for disciplina_json in dados_disciplinas.values():
+
+            disciplina = json.loads(disciplina_json)
+
+            yield portalADM_pb2.Disciplina(sigla=disciplina.get("sigla"), nome=disciplina.get("nome"), vagas=disciplina.get("vagas"))
 
 
 # Função para iniciar o servidor gRPC
@@ -279,7 +369,7 @@ def serve():
     mqtt_client.loop_start()
 
     # Adiciona uma porta de escuta não segura (insecure) no servidor
-    server.add_insecure_port('[::]:50051')
+    server.add_insecure_port(f'[::]:{PORT}')
 
     # Inicia o servidor
     server.start()
@@ -295,7 +385,7 @@ def serve():
 if __name__ == '__main__':
     # Configuração do logging básico
     logging.basicConfig()
-    print("Iniciando servidor em: %s" % ('localhost:50051'))
+    print("Iniciando servidor em: %s" % (f'localhost:{PORT}'))
 
     # Inicia o servidor
     serve()

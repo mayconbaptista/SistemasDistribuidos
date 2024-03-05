@@ -1,5 +1,8 @@
 syntax = "proto3";
 
+//option java_multiple_files = true;
+//option java_package = "br.ufu.facom.gbc074.projeto.matricula";
+
 package project;
 
 message Aluno {
@@ -15,18 +18,19 @@ message Professor {
 message Disciplina {
   string sigla = 1;
   string nome  = 2;
+  int32 vagas  = 3;
 }
 
 message RelatorioDisciplina {
-  Disciplina disciplina          = 1;
-  Professor professor            = 2;
-  repeated Aluno alunos          = 3;
+  Disciplina disciplina = 1;
+  Professor professor   = 2;
+  repeated Aluno alunos = 3;
 }
 
 message ResumoDisciplina {
-  Disciplina disciplina          = 1;
-  Professor professor            = 2;
-  int32 totalAlunos              = 3;
+  Disciplina disciplina = 1;
+  Professor professor   = 2;
+  int32 totalAlunos     = 3;
 }
 
 message Status {
@@ -45,7 +49,7 @@ message DisciplinaPessoa {
   // id da disciplina
   string disciplina = 1;
   // matricula do aluno ou siape do professor
-  string idPessoa = 2;
+  string idPessoa   = 2;
 }
 
 service PortalMatricula {
