@@ -51,12 +51,12 @@ def main():
                 res= stub.DetalhaDisciplina(portalMat_pb2.Identificador(id=id))
                
             elif choice == '6':
-                id = ("Enter Professor ID: ")
+                id = input("Enter Professor ID: ")
                 res = []
                 res += stub.ObtemDisciplinasProfessor(portalMat_pb2.Identificador(id=id))
                 
             elif choice == '7':
-                id = ("Enter Student ID: ")
+                id = input("Enter Student ID: ")
                 res = []
                 res += stub.ObtemDisciplinasAluno(portalMat_pb2.Identificador(id=id))
              
