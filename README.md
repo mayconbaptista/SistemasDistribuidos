@@ -12,6 +12,8 @@ A arquitetura do sistema será híbrida, contendo um pouco de cliente/servidor, 
 * Carlos Antonio
 * Carlos Junior
 
+Video: https://www.youtube.com/watch?v=tAX-8CN_Ms8
+
 ## Como executar?
 
 todos os comando para execução estão no arguivo compile.sh
