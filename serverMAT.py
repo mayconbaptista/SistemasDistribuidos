@@ -103,6 +103,62 @@ def MQTT_sincronize_disciplina (event, request):
     except Exception as e:
         print(f"Sincronize Error: {str(e)}")
 
+
+def MQTT_sincronize_with_mat (event, request):
+
+    try:
+        if(str(event).endswith("add")):
+
+            if(str(event).find("prof") > -1):
+
+                if(matriculas.get(request.get("disciplina")).get("professor") is None):
+
+                    professor = json.loads(professores.get(request.get("idPessoa")))
+                    matriculas[request.get("disciplina")]["professor"] = professor
+                    return
+                
+            elif(str(event).find("aluno") > -1):
+
+                disciplina = json.loads(disciplinas.get(request.get("disciplina")))
+
+                if int(disciplina.get("vagas")) > 0:
+
+                    if(not request.get("idPessoa") in matriculas[request.get("disciplina")]['alunos']):# aqui!
+
+                        disciplina["vagas"] -= 1
+
+                        disciplinas[request.get("disciplina")] = json.dumps(disciplina)
+
+                        matriculas[request.get("disciplina")]["alunos"].append(request.get("idPessoa"))
+
+                        return
+                
+        elif(str(event).endswith("del") > -1):
+
+            if(str(event).find("prof") > -1):
+
+                if (request.get("idPessoa") == matriculas[request.get("disciplina")]['professor']['siape']):
+
+                    matriculas[request.get("disciplina")]['professor'] = None
+
+                    return
+                
+            if(str(event).find("aluno") > -1 ):
+
+                matriculas[request.get("disciplina")]['alunos'].remove(request.get("idPessoa"))
+
+                disciplina = json.loads(disciplinas.get(request.get("disciplina")))
+
+                disciplina['vagas'] += 1
+
+                disciplinas[request.get("disciplina")] = json.dumps(disciplina)
+
+                return
+            
+    except Exception as e:
+        print(f"Sincronize Error: {str(e)}")
+
+
 ###################################### Funções do da conecção do mqtt ############################################
 
 def on_connect(client, userdata, flags, reason_code, properties):
@@ -114,7 +170,7 @@ def on_connect(client, userdata, flags, reason_code, properties):
         # assinamdo o retorno de chamada on_connect para ter certeza
         # nossa assinatura persiste nas reconexões.
         # subescrevendo em toda a arvore de tópicos até a raiz portal
-        client.subscribe(MQTT_TOPIC_BASE + "#")
+        client.subscribe("portal/" + "#")
 
 # Função para lidar com mensagens recebidas do broker MQTT
 def on_message(client, userdata, msg):
@@ -123,12 +179,17 @@ def on_message(client, userdata, msg):
 
     payload = json.loads(msg.payload.decode())
 
-    if(str(msg.topic).find("aluno") > -1):
-        MQTT_sincronize_aluno(msg.topic, payload) #ok
-    elif(str(msg.topic).find("professor") > -1):
-        MQTT_sincronize_professor(msg.topic, payload)
-    elif(str(msg.topic).find("disciplina") > -1):
-        MQTT_sincronize_disciplina(msg.topic, payload)
+    if(str(msg.topic).find("admin") > -1):
+        if(str(msg.topic).find("aluno") > -1):
+            MQTT_sincronize_aluno (msg.topic, payload) #ok
+        elif(str(msg.topic).find("professor") > -1):
+            MQTT_sincronize_professor(msg.topic, payload)
+        elif(str(msg.topic).find("disciplina") > -1):
+            MQTT_sincronize_disciplina(msg.topic, payload)
+
+    elif(str(msg.topic).find("mat") > -1):
+        MQTT_sincronize_with_mat (msg.topic, payload)
+    
 
 # Configuração do cliente MQTT
 mqtt_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
@@ -207,7 +268,7 @@ class PortalMatricula(portalMat_pb2_grpc.PortalMatriculaServicer):
 
                         if(not request.idPessoa in matriculas[request.disciplina]['alunos']):# aqui!
 
-                            disciplina["vagas"] += 1
+                            disciplina["vagas"] -= 1
 
                             disciplinas[request.disciplina] = json.dumps(disciplina)
 
@@ -247,10 +308,10 @@ class PortalMatricula(portalMat_pb2_grpc.PortalMatriculaServicer):
 
                     disciplinas[request.disciplina] = json.dumps(disciplina)
 
-                    dados_json = json.dumps({"sigla":request.disciplina, "idPessoa":request.idPessoa, "vagas":disciplina.get("vagas")})
+                    dados_json = json.dumps({"disciplina":request.disciplina, "idPessoa":request.idPessoa, "vagas":disciplina.get("vagas")})
 
                     # Publica mensagem MQTT indicando a remoção de um aluno da disciplina
-                    mqtt_client.publish(MQTT_TOPIC_BASE + "mat/aluno/del/", dados_json, 0)
+                    mqtt_client.publish(MQTT_TOPIC_BASE + "mat/aluno/del", dados_json, 0)
                     
                     return portalMat_pb2.Status(status=STATUS_OK, msg="OK")
                 else:
@@ -261,31 +322,108 @@ class PortalMatricula(portalMat_pb2_grpc.PortalMatriculaServicer):
             return portalMat_pb2.Status(status=STATUS_ERROR, msg=f"Bad_request alunoId:{request.idPessoa} not in disciplinaId:{request.disciplina}")
 
     def DetalhaDisciplina(self, request, context):
-
         try:
-            if request.id in matriculas.keys():
+            if request.id in disciplinas.keys():
+                disciplina_info = json.loads(disciplinas.get(request.id))
+                professor_info = None
+            
+                if matriculas.get(request.id) and matriculas[request.id]['professor']:
+                    professor_info = json.loads(professores.get(matriculas[request.id]['professor']['siape']))
 
-                disciplina = json.loads(disciplinas.get(request.id))
+                alunos_info = []
+                for matricula in matriculas.get(request.id, {}).get('alunos', []):
+                    aluno_info = json.loads(alunos.get(matricula))
+                    alunos_info.append(portalMat_pb2.Aluno(matricula=matricula, nome=aluno_info.get('nome')))
 
-                disciplina = portalMat_pb2.Disciplina(sigla=disciplina.get("sigla"), nome=disciplina.get("nome"), vagas=int(disciplina.get("vagas")))
+                disciplina = portalMat_pb2.Disciplina(
+                    sigla=disciplina_info.get('sigla', ''),
+                    nome=disciplina_info.get('nome', ''),
+                    vagas=int(disciplina_info.get('vagas', 0))
+                )
 
-                professor = professores.get(disciplina.get())
+                professor = portalMat_pb2.Professor(
+                    siape=professor_info.get('siape', ''),
+                    nome=professor_info.get('nome', '') if professor_info else ''
+                ) if professor_info else None
 
-                alunos = [portalMat_pb2.Aluno(matricula=matricula, nome=alunos[matricula]) for matricula in disciplina.get('alunos', [])]
-                relatorio = portalMat_pb2.RelatorioDisciplina(disciplina=portalMat_pb2.Disciplina(sigla=request.id, nome=disciplina.get('nome', ''), vagas=disciplina.get('vagas', 0)), professor=professor, alunos=alunos)
-                return relatorio
+                return portalMat_pb2.RelatorioDisciplina(
+                    disciplina=disciplina,
+                    professor=professor,
+                    alunos=alunos_info
+                )
             else:
                 disciplina_error = portalMat_pb2.Disciplina(sigla=" ", nome=" ", vagas=0)
                 professor_error = portalMat_pb2.Professor(siape="", nome="")
                 return portalMat_pb2.RelatorioDisciplina(disciplina = disciplina_error, professor=professor_error, alunos=[])
         except Exception as e:
+            print(f"Error in DetalhaDisciplina: {str(e)}")
             return portalMat_pb2.RelatorioDisciplina()
+
+        
         
     def ObtemDisciplinasProfessor(self, request, context):
+        try:
+            for disciplina, matricula_info in matriculas.items():
+                if matricula_info['professor'] and matricula_info['professor']['siape'] == request.id:
+                    alunos_info = []
+                    for matricula_aluno in matricula_info['alunos']:
+                        aluno_info = json.loads(alunos.get(matricula_aluno))
+                        alunos_info.append(portalMat_pb2.Aluno(matricula=matricula_aluno, nome=aluno_info.get('nome')))
+                    yield portalMat_pb2.ResumoDisciplina(
+                        disciplina=portalMat_pb2.Disciplina(
+                            sigla=disciplina,
+                            nome=json.loads(disciplinas.get(disciplina)).get('nome'),
+                            vagas=int(json.loads(disciplinas.get(disciplina)).get('vagas', 0))
+                        ),
+                        professor=portalMat_pb2.Professor(
+                            siape=request.id,
+                            nome=json.loads(professores.get(request.id)).get('nome')
+                        ),
+                        totalAlunos=len(alunos_info)
+                    )
+        except Exception as e:
+            print(f"Error in ObtemDisciplinasProfessor: {str(e)}")
+            yield portalMat_pb2.ResumoDisciplina()
+
+            
+
         
-        for values in matriculas.values():
-            if request.id in values:
-                return
+            
+    def ObtemDisciplinasAluno(self, request, context):
+        try:
+            for disciplina, matricula_info in matriculas.items():
+                if request.id in matricula_info['alunos']:
+                    disciplina_info = json.loads(disciplinas.get(disciplina))
+                    professor_info = None
+
+                    if matricula_info['professor']:
+                        professor_info = json.loads(professores.get(matricula_info['professor']['siape']))
+
+                    alunos_info = []
+                    for matricula_aluno in matricula_info['alunos']:
+                        aluno_info = json.loads(alunos.get(matricula_aluno))
+                        alunos_info.append(portalMat_pb2.Aluno(matricula=matricula_aluno, nome=aluno_info.get('nome')))
+
+                    disciplina_proto = portalMat_pb2.Disciplina(
+                        sigla=disciplina_info.get('sigla', ''),
+                        nome=disciplina_info.get('nome', ''),
+                        vagas=int(disciplina_info.get('vagas', 0))
+                    )
+
+                    professor_proto = portalMat_pb2.Professor(
+                        siape=professor_info.get('siape', ''),
+                        nome=professor_info.get('nome', '') if professor_info else ''
+                    ) if professor_info else None
+
+                    yield portalMat_pb2.ResumoDisciplina(
+                        disciplina=disciplina_proto,
+                        professor=professor_proto,
+                        totalAlunos=len(alunos_info)
+                    )
+
+        except Exception as e:
+            print(f"Error in ObtemDisciplinasAluno: {str(e)}")
+            yield portalMat_pb2.ResumoDisciplina()
 
 # Função para iniciar o servidor gRPC
 def serve():
