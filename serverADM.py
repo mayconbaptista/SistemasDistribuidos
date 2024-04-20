@@ -15,6 +15,7 @@ from data import *
 # Configurações do servidor
 HOST = '127.0.0.1'
 PORT= int(input("Host: "))
+PORTSCKT= int(input("Socket Host: "))
 
 # Configurações do broker MQTT
 MQTT_BROKER_HOST = '127.0.0.1' # 'mqtt.eclipseprojects.io'
@@ -158,6 +159,14 @@ class PortalAdministrativo (portalADM_pb2_grpc.PortalAdministrativoServicer):
                 dados_alunos[request.matricula] = dados_json
 
                 mqtt_client.publish(MQTT_TOPIC_BASE + "aluno/create", dados_json, 0)
+                            # Send 'setaluno' command to the other server via socket
+                try:
+                    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                        sock.connect((HOST, PORTSCKT))
+                        command = json.dumps({"action": "setaluno", "matricula": request.matricula, "nome": request.nome})
+                        sock.sendall(command.encode('utf-8'))
+                except Exception as e:
+                    print(f"Error sending 'setaluno' command via socket: {str(e)}")
                 return portalADM_pb2.Status(status=STATUS_OK, msg=f"Created")
             else:
                 return portalADM_pb2.Status(status=STATUS_ERROR, msg=f"Conflict key:{request.matricula}")
@@ -176,6 +185,13 @@ class PortalAdministrativo (portalADM_pb2_grpc.PortalAdministrativoServicer):
                 dados_alunos[request.matricula] = dados_json
 
                 mqtt_client.publish( MQTT_TOPIC_BASE + "aluno/update", dados_json, 0 )
+                try:
+                    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                        sock.connect((HOST, PORTSCKT))
+                        command = json.dumps({"action": "setaluno", "matricula": request.matricula, "nome": request.nome})
+                        sock.sendall(command.encode('utf-8'))
+                except Exception as e:
+                    print(f"Error sending 'setaluno' command via socket: {str(e)}")
                 return portalADM_pb2.Status(status=STATUS_OK, msg=f"Ok")
             else:
                 return portalADM_pb2.Status(status=STATUS_ERROR, msg=f"Not_found key:{request.matricula}")
@@ -188,6 +204,13 @@ class PortalAdministrativo (portalADM_pb2_grpc.PortalAdministrativoServicer):
         try:
             dados_alunos.pop(request.id)
             mqtt_client.publish( MQTT_TOPIC_BASE + "aluno/delete",json.dumps({"matricula":request.id}), 0)
+            try:
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                    sock.connect((HOST, PORTSCKT))
+                    command = json.dumps({"action": "popaluno", "matricula": request.id})
+                    sock.sendall(command.encode('utf-8'))
+            except Exception as e:
+                print(f"Error sending 'removealuno' command via socket: {str(e)}")
             return portalADM_pb2.Status(status=STATUS_OK, msg="Ok")
         except Exception as e:
             return portalADM_pb2.Status(status=STATUS_ERROR, msg=f"Not_found: {str(e)}")
@@ -227,6 +250,13 @@ class PortalAdministrativo (portalADM_pb2_grpc.PortalAdministrativoServicer):
                 dados_professores[request.siape] = professor_json
 
                 mqtt_client.publish( MQTT_TOPIC_BASE + "professor/create", professor_json, 0 )
+                try:
+                    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                        sock.connect((HOST, PORTSCKT))
+                        command = json.dumps({"action": "setprofessor", "siape": request.siape, "nome": request.nome})
+                        sock.sendall(command.encode('utf-8'))
+                except Exception as e:
+                    print(f"Error sending 'setprofessor' command via socket: {str(e)}")
                 return portalADM_pb2.Status(status=STATUS_OK, msg="Created")
             else:
                 return portalADM_pb2.Status(status=STATUS_ERROR, msg=f"Conflict key:{request.siape}")
@@ -244,6 +274,13 @@ class PortalAdministrativo (portalADM_pb2_grpc.PortalAdministrativoServicer):
                 dados_professores[request.siape] = professor_json
 
                 mqtt_client.publish( MQTT_TOPIC_BASE + "professor/update", professor_json, 0)
+                try:
+                    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                        sock.connect((HOST, PORTSCKT))
+                        command = json.dumps({"action": "setprofessor", "siape": request.siape, "nome": request.nome})
+                        sock.sendall(command.encode('utf-8'))
+                except Exception as e:
+                    print(f"Error sending 'setprofessor' command via socket: {str(e)}")
 
                 return portalADM_pb2.Status(status=STATUS_OK, msg="Ok")
             else:
@@ -255,6 +292,13 @@ class PortalAdministrativo (portalADM_pb2_grpc.PortalAdministrativoServicer):
         try:
             dados_professores.pop(request.id)
             mqtt_client.publish( MQTT_TOPIC_BASE + "professor/delete",json.dumps({"siape":request.id}), 0 )
+            try:
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                    sock.connect((HOST, PORTSCKT))
+                    command = json.dumps({"action": "popprofessor", "siape": request.id})
+                    sock.sendall(command.encode('utf-8'))
+            except Exception as e:
+                print(f"Error sending 'removeprofessor' command via socket: {str(e)}")
             return portalADM_pb2.Status(status=STATUS_OK, msg="Ok")
         
         except KeyError as e:
@@ -297,6 +341,13 @@ class PortalAdministrativo (portalADM_pb2_grpc.PortalAdministrativoServicer):
                 dados_disciplinas[request.sigla] = disciplina_json
 
                 mqtt_client.publish( MQTT_TOPIC_BASE + "disciplina/create", disciplina_json, 0 )
+                try:
+                    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                        sock.connect((HOST, PORTSCKT))
+                        command = json.dumps({"action": "setdisciplina", "sigla": request.sigla, "nome": request.nome, "vagas": request.vagas})
+                        sock.sendall(command.encode('utf-8'))
+                except Exception as e:
+                    print(f"Error sending 'setdisciplina' command via socket: {str(e)}")
                 return portalADM_pb2.Status(status=STATUS_OK, msg="Created")
             else:
                 return portalADM_pb2.Status(status=STATUS_ERROR, msg=f"Conflict key:{request.sigla}")
@@ -315,6 +366,13 @@ class PortalAdministrativo (portalADM_pb2_grpc.PortalAdministrativoServicer):
                 dados_disciplinas[request.sigla] = disciplina_json
             
                 mqtt_client.publish( MQTT_TOPIC_BASE + "disciplina/update", disciplina_json, 0)
+                try:
+                    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                        sock.connect((HOST, PORTSCKT))
+                        command = json.dumps({"action": "setdisciplina", "sigla": request.sigla, "nome": request.nome, "vagas": request.vagas})
+                        sock.sendall(command.encode('utf-8'))
+                except Exception as e:
+                    print(f"Error sending 'setdisciplina' command via socket: {str(e)}")
                 return portalADM_pb2.Status(status=STATUS_OK, msg="Ok")
             else:
                 return portalADM_pb2.Status(status=STATUS_ERROR, msg=f"Not_found: key:{request.sigla}")
@@ -326,6 +384,13 @@ class PortalAdministrativo (portalADM_pb2_grpc.PortalAdministrativoServicer):
         try:
             dados_disciplinas.pop(request.id)
             mqtt_client.publish( MQTT_TOPIC_BASE + "disciplina/delete", json.dumps({"sigla":request.id}), 0)
+            try:
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                    sock.connect((HOST, PORTSCKT))
+                    command = json.dumps({"action": "popprofessor", "sigla": request.id})
+                    sock.sendall(command.encode('utf-8'))
+            except Exception as e:
+                print(f"Error sending 'removeprofessor' command via socket: {str(e)}")
             return portalADM_pb2.Status(status=STATUS_OK, msg="ok")
         
         except KeyError as e:
@@ -381,6 +446,60 @@ def serve():
     mqtt_client.loop_stop()
     mqtt_client.disconnect()
 
+def get_all_alunos(host, port):
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.connect((host, port))
+            command = json.dumps({"action": "getallalunos"})
+            sock.sendall(command.encode('utf-8'))
+            response = b''
+            while True:
+                data = sock.recv(1024)
+                if not data:
+                    break
+                response += data
+            all_data = json.loads(response.decode('utf-8'))
+            for key, value in all_data.items():
+                dados_alunos[key] = value
+    except Exception as e:
+        print(f"Error retrieving all students: {str(e)}")
+
+def get_all_professores(host, port):
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.connect((host, port))
+            command = json.dumps({"action": "getallprofessores"})
+            sock.sendall(command.encode('utf-8'))
+            response = b''
+            while True:
+                data = sock.recv(1024)
+                if not data:
+                    break
+                response += data
+            all_data = json.loads(response.decode('utf-8'))
+            for key, value in all_data.items():
+                dados_professores[key] = value
+    except Exception as e:
+        print(f"Error retrieving all professors: {str(e)}")
+
+def get_all_disciplinas(host, port):
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.connect((host, port))
+            command = json.dumps({"action": "getalldisciplinas"})
+            sock.sendall(command.encode('utf-8'))
+            response = b''
+            while True:
+                data = sock.recv(1024)
+                if not data:
+                    break
+                response += data
+            all_data = json.loads(response.decode('utf-8'))
+            for key, value in all_data.items():
+                dados_disciplinas[key] = value
+    except Exception as e:
+        print(f"Error retrieving all disciplines: {str(e)}")
+ 
 
 if __name__ == '__main__':
     # Configuração do logging básico
@@ -388,4 +507,7 @@ if __name__ == '__main__':
     print("Iniciando servidor em: %s" % (f'localhost:{PORT}'))
 
     # Inicia o servidor
+    get_all_alunos(HOST, PORTSCKT)
+    get_all_professores(HOST, PORTSCKT)
+    get_all_disciplinas(HOST, PORTSCKT)
     serve()
