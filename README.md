@@ -57,3 +57,10 @@ Para testar a comunicação podem ser publicados nos tópicos manualmente usando
 * mosquitto_pub -t portal/admin/disciplina/delete -m "BSI034"
 
 O serverADM irá sincronizar seu banco de dados com base nas atualizações publicadas.
+
+Etapa 2:
+
+Exemplo:
+python3 kvstorage.py localhost:5000 db1 8001 localhost:5001 localhost:5002
+python3 kvstorage.py localhost:5001 db2 8002 localhost:5000 localhost:5002
+python3 kvstorage.py localhost:5002 db3 8003 localhost:5000 localhost:5001
