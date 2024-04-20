@@ -4,6 +4,7 @@ import json
 import paho.mqtt.client as mqtt
 import grpc
 import logging
+import socket
 from concurrent import futures
 # arquivo gerado apartir do portalADM.proto 
 import portalMat_pb2
@@ -16,6 +17,7 @@ from data import * # dados auxiliares
 # Configurações do servidor
 HOST = '127.0.0.1'
 PORT = int(input("Host: "))
+PORTSCKT= int(input("Socket Host: "))
 
 # Configurações do broker MQTT
 MQTT_BROKER_HOST = '127.0.0.1' # 'mqtt.eclipseprojects.io'
@@ -451,10 +453,69 @@ def serve():
     mqtt_client.loop_stop()
     mqtt_client.disconnect()
 
+
+
+def get_all_alunos(host, port):
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.connect((host, port))
+            command = json.dumps({"action": "getallalunos"})
+            sock.sendall(command.encode('utf-8'))
+            response = b''
+            while True:
+                data = sock.recv(1024)
+                if not data:
+                    break
+                response += data
+            all_data = json.loads(response.decode('utf-8'))
+            for key, value in all_data.items():
+                alunos[key] = value
+    except Exception as e:
+        print(f"Error retrieving all students: {str(e)}")
+
+def get_all_professores(host, port):
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.connect((host, port))
+            command = json.dumps({"action": "getallprofessores"})
+            sock.sendall(command.encode('utf-8'))
+            response = b''
+            while True:
+                data = sock.recv(1024)
+                if not data:
+                    break
+                response += data
+            all_data = json.loads(response.decode('utf-8'))
+            for key, value in all_data.items():
+                professores[key] = value
+    except Exception as e:
+        print(f"Error retrieving all professors: {str(e)}")
+
+def get_all_disciplinas(host, port):
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.connect((host, port))
+            command = json.dumps({"action": "getalldisciplinas"})
+            sock.sendall(command.encode('utf-8'))
+            response = b''
+            while True:
+                data = sock.recv(1024)
+                if not data:
+                    break
+                response += data
+            all_data = json.loads(response.decode('utf-8'))
+            for key, value in all_data.items():
+                disciplinas[key] = value
+    except Exception as e:
+        print(f"Error retrieving all disciplines: {str(e)}")
+
 if __name__ == '__main__':
     # Configuração do logging básico
     logging.basicConfig()
     print("Iniciando servidor em: %s" % (f'localhost:{PORT}'))
 
     # Inicia o servidor
+    get_all_alunos(HOST, PORTSCKT)
+    get_all_professores(HOST, PORTSCKT)
+    get_all_disciplinas(HOST, PORTSCKT)
     serve()
